@@ -1,0 +1,16 @@
+{
+ "solidity.compileUsingLocalVersion": "/Users/mac/Downloads/soljson (9).js",
+ "wake.compiler.solc.remappings": [
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+  "ds-test/=lib/solmate/lib/ds-test/src/",
+  "erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/",
+  "forge-std/=lib/forge-std/src/",
+  "openzeppelin-contracts/=lib/openzeppelin-contracts/",
+  "solady/=lib/solady/src/",
+  "solmate/=lib/solmate/src/",
+  "v3-core/=lib/v3-core/",
+  "v3-periphery/=lib/v3-periphery/contracts/"
+ ],
+ "terminal.integrated.fontSize": 14,
+ "terminal.integrated.lineHeight": 1
+}
