@@ -1,0 +1,32 @@
+Concentrated Liqudity 
+    -> Strategies/Modules
+      -> Perp Market
+        --> orders
+          --> Long orders
+          --> Short orders
+          --> Trading Fees (rebalancing) 
+
+## We can use callbacks to execute Strategies in the Concentrated Liqudity pool
+## Or use a seperate Pool to connect all Pools together
+## name all internal functions first, before implemanting
+    -> what each function should do 
+    ->
+## Lps of the Concentrated Liqudity pool can use 
+
+### Hackathon Ideas (not required but likely to do well in judging)
+
+- New and innovative perpetual protocols that leverage sFRAX yield as collateral.
+- Memecoin platforms such as pump.fun but for the Fraxtal ecosystem.
+- New veFXS lockers, veFXS LSDs, veFXS utility since there is no whitelist anymore to stake veFXS.
+- OP Superchain powered applications
+- Fixed Yield Tokenization Protocols Similar to Pendle and Hourglass
+- Restaking protocols that integrate FXS and any Frax Asset as base restaked assets, including veFXS as a restaked asset since veFXS can now be slashed.
+- Stablecoin payment rails/yield apps that integrate FRAX & sFRAX.
+- Frax Simplified Farming Front Ends/Mobile Apps, maximize FXTL, FXS, sFRAX, sfrxETH, FXB yields.
+- Fraxtal vault strategies that create delta-neutral positions & harvest yield for users similar to Yearn vaults.
+- FXB Fixed yield Protocols, FXB fixed yield indexing dapps
+- Issue tokenized real-world assets on Fraxtal -Create issuance platforms for new and existing RWA tokens to issue natively on Fraxtal mainnet (RWAs as a serve).
+- Frax Super Simple Saver App/Wallet
+- AI DeFi and onchain AI inference protocols
+- L3 Appchains - Work with leading RaaS providers to build L3s and appchains uniquely leveraging Frax Assets such as privacy optimized, high-throughput payment L3s for sending stablecoin payments anonymously.
+ 
