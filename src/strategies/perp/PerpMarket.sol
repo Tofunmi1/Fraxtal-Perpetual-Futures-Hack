@@ -14,8 +14,8 @@ struct balance {
 contract PerpMarket is Ownable {
     using SignedDecimalMath for int256;
 
-    mapping(address => balance) balanceMap;
-    int256 fundingRate;
+    mapping(address => balance) public balanceMap;
+    int256 public fundingRate;
 
     // ========== events ==========
 
@@ -25,15 +25,14 @@ contract PerpMarket is Ownable {
 
     // ========== constructor ==========
 
-    constructor(address _owner) Ownable(_owner) {}
+    constructor(address _perpRouter) Ownable(_perpRouter) {}
 
     function balanceOf(address trader) external view returns (int256 weight, int256 notional) {
         weight = int256(balanceMap[trader].weight);
         notional = weight.decimalMul(fundingRate) + int256(balanceMap[trader].reducedNotional);
     }
 
-    /// add onlyOwner modifier
-    function updateFundingRate(int256 newFundingRate) external {
+    function updateFundingRate(int256 newFundingRate) external onlyOwner {
         int256 oldFundingRate = fundingRate;
         fundingRate = newFundingRate;
         emit UpdateFundingRate(oldFundingRate, newFundingRate);
@@ -87,9 +86,9 @@ contract PerpMarket is Ownable {
         int256 notional = int256(balanceMap[trader].weight).decimalMul(rate)
             + int256(balanceMap[trader].reducedNotional) + notionalChange;
         int128 newPaper = balanceMap[trader].weight + SafeCast.toInt128(weightChange);
-        int128 newReducedCredit = SafeCast.toInt128(notional - int256(newPaper).decimalMul(rate));
+        int128 newReducedN = SafeCast.toInt128(notional - int256(newPaper).decimalMul(rate));
         balanceMap[trader].weight = newPaper;
-        balanceMap[trader].reducedNotional = newReducedCredit;
+        balanceMap[trader].reducedNotional = newReducedN;
         emit BalanceChange(trader, weightChange, notionalChange);
         if (isNewPosition) {
             PerpRouter(owner()).openPosition(trader);

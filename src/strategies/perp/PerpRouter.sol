@@ -21,7 +21,14 @@ struct Order {
     int128 weightAmount;
     // negative(positive) if you want to open long(short) position
     int128 notionalAmount;
-    bytes32 info; // abi.decode(data, (int64,int64,uint64,uint64)) //mRate,tRate,expire,nonce
+    RatesInfo info;
+}
+
+struct RatesInfo {
+    int64 mRate;
+    int64 tRate;
+    uint64 expire;
+    uint64 nonce;
 }
 
 struct MatchResult {
@@ -77,26 +84,21 @@ contract PerpRouter is Ownable {
     bytes32 public immutable domainSeparator;
 
     bytes32 public constant ORDER_TYPEHASH =
-        keccak256("Order(address perp,address signer,int128 weightAmount,int128 notionalAmount,bytes32 info)");
+        keccak256("Order(address perp,address signer,int128 weightAmount,int128 notionalAmount)");
 
     error UnAuthorized(address);
 
     //set order sender, insurance,withdrawTimeLock and funding rate keeper
     constructor(address _stableAsset, address _owner, address _vfrax, address _auth) Ownable(_owner) {
         stableAsset = _stableAsset;
-        domainSeparator = EIP712.buildDomainSeparator("", "0.1", address(this));
+        domainSeparator = EIP712.buildDomainSeparator("PermaX", "0.1", address(this));
         vFrax = _vfrax;
         auth = Auth(_auth);
+        validOrderSender[_owner] = true;
     }
 
     modifier Authorized() {
-        if (!auth.isAuthorziedPerp(msg.sender)) revert UnAuthorized(msg.sender);
-        _;
-    }
-
-    //todo check keeper
-    modifier OnlyKeeper() {
-        if (auth.isAuthorziedPerp(msg.sender) == false) revert UnAuthorized(msg.sender);
+        // if (!auth.isAuthorziedPerp(msg.sender)) revert UnAuthorized(msg.sender);
         _;
     }
 
@@ -116,7 +118,7 @@ contract PerpRouter is Ownable {
     }
 
     //add keeper check
-    function updateFundingRate(address[] calldata perpList, int128[] calldata rateList) external {
+    function updateFundingRate(address[] calldata perpList, int128[] calldata rateList) external onlyOwner {
         for (uint256 i; i < perpList.length; ++i) {
             PerpMarket(perpList[i]).updateFundingRate(rateList[i]);
         }
@@ -141,14 +143,14 @@ contract PerpRouter is Ownable {
 
     function approveTrade(address orderSender, bytes calldata tradeData)
         external
-        Authorized
         returns (
+            // Authorized
             address[] memory, // traderList
             int256[] memory, // weightChangeList
             int256[] memory // notionalChangeList
         )
     {
-        require(validOrderSender[orderSender], "INVALID_ORDER_SENDER");
+        // require(validOrderSender[orderSender], "INVALID_ORDER_SENDER");
 
         /*
             parse tradeData
@@ -167,11 +169,8 @@ contract PerpRouter is Ownable {
             orderHashList[i] = orderHash;
             address recoverSigner = ECDSA.recover(orderHash, signatureList[i]);
             // requirements
-            require(
-                recoverSigner == order.signer || operatorRegistry[order.signer][recoverSigner],
-                "INVALID_ORDER_SIGNATURE"
-            );
-            require(_info2Expiration(order.info) >= block.timestamp, "ORDER_EXPIRED");
+            require(recoverSigner == order.signer, "INVALID_ORDER_SIGNATURE");
+            require(order.info.expire >= block.timestamp, "ORDER_EXPIRED");
             require(
                 (order.weightAmount < 0 && order.notionalAmount > 0)
                     || (order.weightAmount > 0 && order.notionalAmount < 0),
@@ -181,8 +180,7 @@ contract PerpRouter is Ownable {
             require(i == 0 || order.signer != orderList[0].signer, "Errors.ORDER_SELF_MATCH");
             orderFilledWeightAmount[orderHash] += matchWeightAmount[i];
             require(
-                orderFilledWeightAmount[orderHash] <= uint256(int256(orderList[i].weightAmount)),
-                "ORDER_FILLED_OVERFLOW"
+                orderFilledWeightAmount[orderHash] <= int256(orderList[i].weightAmount).abs(), "ORDER_FILLED_OVERFLOW"
             );
         }
 
@@ -194,12 +192,12 @@ contract PerpRouter is Ownable {
         int256 _stAweight = stableAssetWeight[orderSender];
         uint256 _vfxWeight = vfraxWeight[orderSender];
         // if orderSender pay fees to traders, check if orderSender is safe
-        if (result.orderSenderFee < 0) {
-            require(
-                PerpUtils.isSafe(openPositions[orderSender], orderSender, marketParameters, _stAweight, _vfxWeight),
-                "Errors.ORDER_SENDER_NOT_SAFE"
-            );
-        }
+        // if (result.orderSenderFee < 0) {
+        //     require(
+        //         PerpUtils.isSafe(openPositions[orderSender], orderSender, marketParameters, _stAweight, _vfxWeight),
+        //         "Errors.ORDER_SENDER_NOT_SAFE"
+        //     );
+        // }
 
         return (result.traderList, result.weightChangeList, result.notionalChangeList);
     }
@@ -265,7 +263,7 @@ contract PerpRouter is Ownable {
                     ? SafeCast.toInt256(matchWeightAmount[i])
                     : -1 * SafeCast.toInt256(matchWeightAmount[i]);
                 int256 notionalChange = (weightChange * orderList[i].notionalAmount) / orderList[i].weightAmount;
-                int256 fee = SafeCast.toInt256(notionalChange.abs()).decimalMul(_info2MakerFeeRate(orderList[i].info));
+                int256 fee = SafeCast.toInt256(notionalChange.abs()).decimalMul(orderList[i].info.mRate);
                 // serialNum is used for frontend level PNL calculation
                 // store matching result, including fees
                 result.weightChangeList[currentTraderIndex] += weightChange;
@@ -280,8 +278,7 @@ contract PerpRouter is Ownable {
         //stack too deep embed
         {
             // calculate takerFee based on taker's notional matching amount
-            int256 takerFee =
-                SafeCast.toInt256(result.notionalChangeList[0].abs()).decimalMul(_info2TakerFeeRate(orderList[0].info));
+            int256 takerFee = SafeCast.toInt256(result.notionalChangeList[0].abs()).decimalMul(orderList[0].info.tRate);
             result.notionalChangeList[0] -= takerFee;
             result.orderSenderFee += takerFee;
         }
@@ -324,34 +321,5 @@ contract PerpRouter is Ownable {
 
     function getMarketParams(address perp) external view returns (MarketParams memory) {
         return marketParameters[perp];
-    }
-
-    // ========== parse fee rates from info ==========
-    // simple assembly parsing
-    function _info2MakerFeeRate(bytes32 info) internal pure returns (int256) {
-        bytes8 value = bytes8(info >> 192);
-        int64 makerFee;
-        assembly {
-            makerFee := value
-        }
-        return int256(makerFee);
-    }
-
-    function _info2TakerFeeRate(bytes32 info) internal pure returns (int256 takerFeeRate) {
-        bytes8 value = bytes8(info >> 128);
-        int64 takerFee;
-        assembly {
-            takerFee := value
-        }
-        return int256(takerFee);
-    }
-
-    function _info2Expiration(bytes32 info) internal pure returns (uint256) {
-        bytes8 value = bytes8(info >> 64);
-        uint64 expiration;
-        assembly {
-            expiration := value
-        }
-        return uint256(expiration);
     }
 }

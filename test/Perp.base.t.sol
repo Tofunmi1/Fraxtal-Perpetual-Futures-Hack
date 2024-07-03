@@ -5,7 +5,9 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {PerpRouter, Order, MatchResult, MarketParams} from "src/strategies/perp/PerpRouter.sol";
 import {IERC20} from "lib/forge-std/src/interfaces/IERC20.sol";
 import {InsuranceFund} from "src/strategies/perp/InsuranceFund.sol";
-import {vFrax} from "src/strategies/perp/collateral/vFrax.sol";
+// import {vFrax} from "src/strategies/perp/collateral/vFrax.sol";
+import {vFrax} from "test/perp/vFrax/vFrax.sol";
+/// (multicollaral backed token)
 import {PerpRouter} from "src/strategies/perp/PerpRouter.sol";
 import {FundingRate} from "src/strategies/perp/FundingRate.sol";
 import {PerpMarket} from "src/strategies/perp/PerpMarket.sol";
@@ -40,7 +42,7 @@ contract PerpBaseTest is Test {
     //user addresses , lps and traders
     address internal user01 = makeAddr("user01");
     address internal user02 = makeAddr("user02");
-    address internal user03 = makeAddr("user02");
+    address internal user03 = makeAddr("user03");
     address internal alice = makeAddr("alice");
     address internal bob = makeAddr("bob");
     address internal carol = makeAddr("carol");
@@ -84,21 +86,21 @@ contract PerpBaseTest is Test {
         */
         vm.startPrank(owner);
         auth = Auth(owner);
+        perpRouter = new PerpRouter(frax, address(owner), address(vfrax), address(auth));
         insuranceFund = new InsuranceFund(owner);
-        BTC_FRAX = new PerpMarket(owner);
-        ETH_FRAX = new PerpMarket(owner);
-        SOL_FRAX = new PerpMarket(owner);
+        BTC_FRAX = new PerpMarket(address(perpRouter));
+        ETH_FRAX = new PerpMarket(address(perpRouter));
+        SOL_FRAX = new PerpMarket(address(perpRouter));
         vfrax = new vFrax();
         address[] memory markets;
         int128[] memory rates;
-        // fundingRate = new FundingRate(owner, markets, rates);
-        perpRouter = new PerpRouter(frax, address(owner), address(vfrax), address(auth));
         perpRouter.setMrketParams(
             address(BTC_FRAX), MarketParams(0.03 * 1e18, 0.03 * 1e18, 0.03 * 1e18, address(this), "btc", true)
         );
         perpRouter.setMrketParams(
             address(ETH_FRAX), MarketParams(0.03 * 1e18, 0.03 * 1e18, 0.03 * 1e18, address(this), "btc", true)
         );
+        fundingRate = new FundingRate(address(perpRouter), 3);
         vm.stopPrank();
     }
 

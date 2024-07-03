@@ -1,3 +1,5 @@
+# Perma a mutlicollateral perpetual dex, bringing perpetual leveraged trading to fraxtal (to gain from low trading gas fees for users) and trade perps directly with frax
+
 Product Road Map
 
 - Architecture and Technical Specifications (github latex maths probably)
@@ -9,11 +11,13 @@ Product Road Map
 - offchain trading engine in rust/python(EIP 712 Order matching)
 - Test coverage (-%)
 
+## About Perma
+
+Perma is coming as the go-to perp trading app for DeFi newbies. Think of it as trading on a CEX, but you’re actually in the DeFi world. It’s about making everything seamless as possible , simple and technical at the same time. `You only need to input the size of the position you want in the smart contracts and choose your leverage (the higher the leverage the closer to been liquidated)`
+
 ## Smart contracts Architecture
 
 <img src="./docs/Untitled-2023-09-03-0244.svg"> 
-Perma is coming as the go-to perp trading app for DeFi newbies. Think of it as trading on a CEX, but you’re actually in the DeFi world. It’s about making everything seamless as possible , simple and technical at the same time
-
 ## Pricing models for mark price and Funding rates
 
 ### Funding Rate formula
@@ -32,7 +36,7 @@ Then:
 
 Mid-price calculation: $M(t) = \frac{B_1(t) + A_1(t)}{2}$ Difference from Index Price: $\Delta(t) = M(t) - IP(t)$ Moving Average calculation: $MA_{30}(t) = \frac{1}{30} \sum_{i=0}^{29} \Delta(t-i)$ Mark Price calculation: $MP(t) = IP(t) + MA_{30}(t)$ Update condition: $MP(t)$ is recalculated whenever $B_1(t) \neq B_1(t-\varepsilon)$ or $A_1(t) \neq A_1(t-\varepsilon)$
 
-In concise notation: $MP(t) = IP(t) + \frac{1}{30} \sum_{i=0}^{29} \left[\frac{B_1(t-i) + A_1(t-i)}{2} - IP(t-i)\right]$ Subject to: $\forall \varepsilon > 0$, if $B_1(t) \neq B_1(t-\varepsilon)$ or $A_1(t) \neq A_1(t-\varepsilon)$, then recalculate $MP(t)$
+Simplifying: $MP(t) = IP(t) + \frac{1}{30} \sum_{i=0}^{29} \left[\frac{B_1(t-i) + A_1(t-i)}{2} - IP(t-i)\right]$ Subject to: $\forall \varepsilon > 0$, if $B_1(t) \neq B_1(t-\varepsilon)$ or $A_1(t) \neq A_1(t-\varepsilon)$, then recalculate $MP(t)$
 
 ### Funding Rate formula
 
@@ -103,3 +107,11 @@ I - P & \text{otherwise}
 \end{cases} & \text{otherwise}
 \end{cases}
 $$
+
+## File structure
+
+### Main contracts
+
+- [PerpRouter](src/strategies/perp/PerpRouter.sol) : - Contract for managing perp markets, handles trade matching, trading approval, etc
+- [PerpMarket](src/strategies/perp/PerpMarket.sol) :- Tracking the balances of the users acount and positions
+- [FundingRate.sol](src/strategies/perp/FundingRate.sol) :- Contract for Managing funding rates across markets
